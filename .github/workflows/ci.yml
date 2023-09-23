@@ -95,7 +95,7 @@ jobs:
           haskell: true
           large-packages: false
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       # example copied from:
       # https://github.com/actions/cache/blob/04f198bf0b2a39f7230a4304bf07747a0bddf146/examples.md
       - name: Cache Bazel
@@ -151,7 +151,7 @@ jobs:
         # *on the mainline branch*
         # we have to set the Pulumi state to be the same.
       - name: Checkout main branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: main
       - name: Pulumi up from origin/main to staging
@@ -164,7 +164,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_SECRET }}
       - name: Switch back to candidate branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Deploy candidate branch to Staging
         # we can run this dirty since the next run will --overwrite anyway
         run: |
@@ -191,7 +191,7 @@ jobs:
           swap-storage: true
           large-packages: false
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       # example copied from:
       # https://github.com/actions/cache/blob/04f198bf0b2a39f7230a4304bf07747a0bddf146/examples.md
       - name: Cache Bazel
@@ -232,7 +232,7 @@ jobs:
           large-packages: false
           swap-storage: true
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       # example copied from:
       # https://github.com/actions/cache/blob/04f198bf0b2a39f7230a4304bf07747a0bddf146/examples.md
       - name: Cache Bazel
