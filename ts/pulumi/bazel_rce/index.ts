@@ -46,7 +46,7 @@ interface DockerFileParams {
 }
 
 const password_file_name = '.htpasswd';
-const monorepo_github_name = 'zemnmez/monorepo';
+const monorepo_github_name = 'zemn-me/monorepo';
 
 function DockerFile(params: DockerFileParams) {
 	return `
