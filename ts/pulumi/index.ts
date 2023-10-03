@@ -83,6 +83,7 @@ export class Component extends Pulumi.ComponentResource {
 			{
 				zoneId: Pulumi.output(zone.me.zemn.then(z => z.id)),
 				domain: stage('cache.bazel.zemn.me'),
+				stage: args.staging,
 			},
 			{ parent: this }
 		);
