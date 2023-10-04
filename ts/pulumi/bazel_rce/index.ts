@@ -321,8 +321,11 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		const loadBalancer = new awsx.lb.ApplicationLoadBalancer(
 			deriveAWSRestrictedELBName(name),
 			{
-				listener: {
+				defaultTargetGroup: {
+					protocol: 'http',
 					port: 80,
+				},
+				listener: {
 					protocol: 'HTTPS',
 					certificateArn: certReq.validation.certificateArn,
 					sslPolicy: 'ELBSecurityPolicy-2016-08',
