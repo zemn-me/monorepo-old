@@ -120,7 +120,7 @@ WORKDIR /data
 VOLUME /data
 VOLUME /aws-config
 
-EXPOSE 80:8080
+EXPOSE 80:80
 
 COPY ${password_file_name} ${password_file_name}
 
@@ -132,7 +132,7 @@ CMD [ \\
 	"--s3.bucket=${params.s3Bucket}", \\
 	"--s3.endpoint=s3.us-east-1.amazonaws.com", \\
 	"--htpasswd_file=${password_file_name}", \\
-	"--http_address=8080", \\
+	"--http_address=80", \\
 	"--max_size", \\
 	"5" \\
 ]
