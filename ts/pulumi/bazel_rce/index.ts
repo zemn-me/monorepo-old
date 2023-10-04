@@ -1,6 +1,58 @@
 /**
  * @fileoverview Provisions a bazel remote caching server
  * @see https://bazel.build/remote/caching
+ * 						Internet
+ * 	┌───────────────────────┐
+ * 	│        Pulumi         │     ─┐
+ * 	└───────────────────────┘      │
+ * 		│                          │
+ * 		│ HTTP Simple Auth URL     │
+ * 		▼                          │
+ * 	┌───────────────────────┐      │
+ * 	│        GitHub         │      │
+ * 	└───────────────────────┘      │
+ * 		│                          │
+ * 		│ HTTP Simple Auth URL     │
+ * 		▼                          │
+ * 	┌───────────────────────┐      │
+ * 	│ GitHub Actions Runner │      │
+ * 	└───────────────────────┘      │
+ * 		│                          │
+ * 		│ HTTPS                    │
+ * 		▼                          │
+ * 	┌−−−−−−−−−−−−−−−−−−−−−−−−−−−┐  │ Docker Image
+ * 	╎            VPC            ╎  │
+ * 	╎                           ╎  │
+ * 	╎ ┌───────────────────────┐ ╎  │
+ * 	╎ │      ApiGateway       │ ╎  │
+ * 	╎ └───────────────────────┘ ╎  │
+ * 	╎   │                       ╎  │
+ * 	╎   │ HTTP                  ╎  │
+ * 	╎   ▼                       ╎  │
+ * 	╎ ┌───────────────────────┐ ╎  │
+ * 	╎ │          ALB          │ ╎  │
+ * 	╎ └───────────────────────┘ ╎  │
+ * 	╎   │                       ╎  │
+ * 	╎   │ HTTP                  ╎  │
+ * 	╎   ▼                       ╎  │
+ * 	╎ ┌───────────────────────┐ ╎  │
+ * 	╎ │          ECS          │ ╎ ◀┘
+ * 	╎ └───────────────────────┘ ╎
+ * 	╎   │                       ╎
+ * 	╎   │ HTTP                  ╎
+ * 	╎   ▼                       ╎
+ * 	╎ ┌───────────────────────┐ ╎
+ * 	╎ │  Bazel Remote Cache   │ ╎ ◀┐
+ * 	╎ └───────────────────────┘ ╎  │
+ * 	╎                           ╎  │
+ * 	└−−−−−−−−−−−−−−−−−−−−−−−−−−−┘  │
+ * 		▲                          │
+ * 		│                          │ Cache Retrieval
+ * 		│ Cache storage            │
+ * 		▼                          │
+ * 	┌───────────────────────┐      │
+ * 	│          S3           │     ─┘
+ * 	└───────────────────────┘
  */
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -238,11 +290,29 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		);
 
 		/**
+		 * Get a certificate for the cache server
+		 */
+		const certReq = new Cert.Certificate(
+			`${name}_cert`,
+			{
+				zoneId: args.zoneId,
+				domain: args.domain,
+			},
+			{ parent: this }
+		);
+
+		/**
 		 * Load balancer for the cache service
 		 */
 		const loadBalancer = new awsx.lb.ApplicationLoadBalancer(
 			deriveAWSRestrictedELBName(name),
-			{},
+			{
+				listener: {
+					protocol: 'HTTPS',
+					certificateArn: certReq.validation.certificateArn,
+					sslPolicy: 'ELBSecurityPolicy-2016-08',
+				},
+			},
 			{ parent: this }
 		);
 
@@ -308,133 +378,16 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
-		/**
-		 * Get a certificate for the cache server
-		 */
-		const certReq = new Cert.Certificate(
-			`${name}_cert`,
+		const record = new aws.route53.Record(
+			`${name}_record`,
 			{
+				name: args.domain,
+				type: 'CNAME',
 				zoneId: args.zoneId,
-				domain: args.domain,
+				ttl: 120,
+				records: [loadBalancer.loadBalancer.dnsName],
 			},
-			{ parent: this }
-		);
-
-		/**
-		 * DomainName for the API TLS proxy server.
-		 */
-		const apiProxyDomainName = new aws.apigatewayv2.DomainName(
-			`${name}_domain_name`,
-			{
-				domainName: args.domain,
-				domainNameConfiguration: {
-					certificateArn: certReq.validation.certificateArn,
-					endpointType: 'REGIONAL',
-					securityPolicy: 'TLS_1_2',
-				},
-			},
-			{ parent: this }
-		);
-
-		const record = new aws.route53.Record(`${name}_record`, {
-			name: apiProxyDomainName.domainName,
-			type: 'A',
-			zoneId: args.zoneId,
-			aliases: [
-				{
-					name: apiProxyDomainName.domainNameConfiguration.apply(
-						domainNameConfiguration =>
-							domainNameConfiguration.targetDomainName
-					),
-					zoneId: apiProxyDomainName.domainNameConfiguration.apply(
-						domainNameConfiguration =>
-							domainNameConfiguration.hostedZoneId
-					),
-					evaluateTargetHealth: false,
-				},
-			],
-		});
-
-		/**
-		 * Proxy API to pipe the cache server through an encrypted reverse-proxy.
-		 */
-		const api = new aws.apigatewayv2.Api(
-			`${name}_api_proxy`,
-			{
-				protocolType: 'HTTP',
-				disableExecuteApiEndpoint: true,
-			},
-			{ parent: this }
-		);
-
-		/**
-		 * Stage for the API gateway that applies the SSL cert.
-		 */
-		const apiStage = new aws.apigatewayv2.Stage(
-			`${name}_proxy_api_gateway_stage`,
-			{
-				apiId: api.id,
-			},
-			{ parent: this }
-		);
-
-		new aws.apigatewayv2.ApiMapping(
-			`${name}_api_mapping`,
-			{
-				apiId: api.id,
-				domainName: apiProxyDomainName.id,
-				stage: apiStage.id,
-			},
-			{ parent: this }
-		);
-
-		/**
-		 * Proxy integration that proxies the private cache server ELB
-		 */
-		const integration = new aws.apigatewayv2.Integration(
-			`${name}_proxy_integration`,
-			{
-				apiId: api.id,
-				integrationType: 'HTTP_PROXY',
-				integrationMethod: 'ANY',
-				// proxy the load balancer for the cache service
-				integrationUri: loadBalancer.loadBalancer.arn,
-			},
-			{ parent: this }
-		);
-
-		/**
-		 * Route that wildcard proxies everything to the integration
-		 */
-		const apiProxyRoute = new aws.apigatewayv2.Route(
-			`${name}_api_proxy_route`,
-			{
-				apiId: api.id,
-				routeKey: 'ANY {proxy+}',
-				// what is this syntax lol
-				target: Pulumi.interpolate`integrations/${integration.id}`,
-			},
-			{ parent: this }
-		);
-
-		/**
-		 * Reverse-proxy to serve SSL certificate on the cache server.
-		 */
-		new aws.apigatewayv2.Deployment(
-			`${name}_gateway_deployment`,
-			{
-				apiId: api.id,
-				description: `SSL / TLS API gateway to the ${args.domain} bazel cache api.`,
-			},
-			{
-				parent: this,
-				// **Note:** Creating a deployment for an API requires at least one `aws.apigatewayv2.Route`
-				// resource associated with that API. To avoid race conditions when all resources are being
-				// created together, you need to add implicit resource references via the `triggers` argument
-				// or explicit resource references using the
-				// [resource `dependsOn` meta-argument](https://www.pulumi.com/docs/intro/concepts/programming-model/#dependson).
-				dependsOn: [apiProxyRoute],
-			}
+			{ parent: this, deleteBeforeReplace: true }
 		);
 
 		new GitHub.ActionsSecret(
@@ -446,7 +399,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 					args.stage ? '_staging' : ''
 				}`,
 			},
-			{ parent: this }
+			{ parent: this, deleteBeforeReplace: true }
 		);
 
 		super.registerOutputs({ service, bucketPolicy });
