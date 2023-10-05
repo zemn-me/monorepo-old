@@ -1,58 +1,6 @@
 /**
  * @fileoverview Provisions a bazel remote caching server
  * @see https://bazel.build/remote/caching
- * 						Internet
- * 	┌───────────────────────┐
- * 	│        Pulumi         │     ─┐
- * 	└───────────────────────┘      │
- * 		│                          │
- * 		│ HTTP Simple Auth URL     │
- * 		▼                          │
- * 	┌───────────────────────┐      │
- * 	│        GitHub         │      │
- * 	└───────────────────────┘      │
- * 		│                          │
- * 		│ HTTP Simple Auth URL     │
- * 		▼                          │
- * 	┌───────────────────────┐      │
- * 	│ GitHub Actions Runner │      │
- * 	└───────────────────────┘      │
- * 		│                          │
- * 		│ HTTPS                    │
- * 		▼                          │
- * 	┌−−−−−−−−−−−−−−−−−−−−−−−−−−−┐  │ Docker Image
- * 	╎            VPC            ╎  │
- * 	╎                           ╎  │
- * 	╎ ┌───────────────────────┐ ╎  │
- * 	╎ │      ApiGateway       │ ╎  │
- * 	╎ └───────────────────────┘ ╎  │
- * 	╎   │                       ╎  │
- * 	╎   │ HTTP                  ╎  │
- * 	╎   ▼                       ╎  │
- * 	╎ ┌───────────────────────┐ ╎  │
- * 	╎ │          ALB          │ ╎  │
- * 	╎ └───────────────────────┘ ╎  │
- * 	╎   │                       ╎  │
- * 	╎   │ HTTP                  ╎  │
- * 	╎   ▼                       ╎  │
- * 	╎ ┌───────────────────────┐ ╎  │
- * 	╎ │          ECS          │ ╎ ◀┘
- * 	╎ └───────────────────────┘ ╎
- * 	╎   │                       ╎
- * 	╎   │ HTTP                  ╎
- * 	╎   ▼                       ╎
- * 	╎ ┌───────────────────────┐ ╎
- * 	╎ │  Bazel Remote Cache   │ ╎ ◀┐
- * 	╎ └───────────────────────┘ ╎  │
- * 	╎                           ╎  │
- * 	└−−−−−−−−−−−−−−−−−−−−−−−−−−−┘  │
- * 		▲                          │
- * 		│                          │ Cache Retrieval
- * 		│ Cache storage            │
- * 		▼                          │
- * 	┌───────────────────────┐      │
- * 	│          S3           │     ─┘
- * 	└───────────────────────┘
  */
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -311,45 +259,12 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 
 		const vpc = new awsx.ec2.Vpc(`${name}_vpc`, {});
 
-		const albSecurityGroup = new aws.ec2.SecurityGroup(
-			`${name}_alb_sg`,
-			{
-				vpcId: vpc.vpcId,
-				egress: [
-					{
-						protocol: '-1',
-						fromPort: 0,
-						toPort: 0,
-						cidrBlocks: ['0.0.0.0/0'],
-					},
-				],
-				ingress: [
-					{
-						protocol: 'tcp',
-						fromPort: 8080,
-						toPort: 8080,
-						cidrBlocks: ['0.0.0.0/0'],
-					},
-					{
-						protocol: 'tcp',
-						fromPort: 443,
-						toPort: 443,
-						cidrBlocks: ['0.0.0.0/0'],
-					},
-				],
-			},
-			{ parent: this }
-		);
-
-		const loadBalancer = new aws.lb.LoadBalancer(
-			deriveAWSRestrictedELBName(name),
+		const loadBalancer = new awsx.lb.ApplicationLoadBalancer(
+			`${name}_alb`,
 			{
 				enableDeletionProtection: false,
-				subnets: vpc.publicSubnetIds,
-				securityGroups: [albSecurityGroup.id],
+				subnetIds: vpc.publicSubnetIds,
 				enableHttp2: true,
-				internal: false,
-				loadBalancerType: 'application',
 			},
 			{ parent: this }
 		);
@@ -378,7 +293,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		new aws.lb.Listener(
 			deriveAWSRestrictedELBName(name) + '-listener',
 			{
-				loadBalancerArn: loadBalancer.arn,
+				loadBalancerArn: loadBalancer.loadBalancer.arn,
 				port: 443,
 				protocol: 'HTTPS',
 				certificateArn: certReq.validation.certificateArn,
@@ -402,7 +317,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 				type: 'CNAME',
 				zoneId: args.zoneId,
 				ttl: 120,
-				records: [loadBalancer.dnsName],
+				records: [loadBalancer.loadBalancer.dnsName],
 			},
 			{ parent: this, deleteBeforeReplace: true }
 		);
