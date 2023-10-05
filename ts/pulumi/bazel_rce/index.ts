@@ -114,16 +114,9 @@ function DockerFile(params: DockerFileParams) {
 # Use a base image with Bazel and other dependencies
 FROM buchgr/bazel-remote-cache:latest
 
-# Set the user and group to 1000:1000
-USER 1000:1000
-# Set the working directory
-WORKDIR /data
+USER 65532:65532
 
-# Mount cache directory and AWS configuration from the host
-VOLUME /data
-VOLUME /aws-config
-
-EXPOSE 80
+EXPOSE 8080
 
 COPY ${password_file_name} ${password_file_name}
 
@@ -131,12 +124,13 @@ COPY ${password_file_name} ${password_file_name}
 CMD [ \\
 	"--s3.auth_method=access_key", \\
 	"--s3.secret_access_key=${params.accessKey}", \\
-	"--s3.secret_access_key_id=${params.accessKeyId}", \\
+	"--s3.access_key_id=${params.accessKeyId}", \\
 	"--s3.bucket=${params.s3Bucket}", \\
-	"--s3.endpoint=${params.s3Endpoint}", \\Id
+	"--s3.endpoint=${params.s3Endpoint}", \\
 	"--htpasswd_file=${password_file_name}", \\
-	"--http_address=0.0.0.0:80", \\
-	"--max_size=5", \\
+	"--http_address=0.0.0.0:8080", \\
+	"--max_size", \\
+	"5" \\
 ]
 
 
@@ -273,27 +267,35 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			fs.writeFile(path.join(dir, password_file_name), content)
 		);
 
-const dockerFile= Pulumi.all([
-    deployContextDirName,
-    bucket.id,
-    accessKey.secret,
-    bucket.bucketRegionalDomainName,
-    accessKey.id
-]).apply(([dir, bucketId, secretAccessKey, s3Endpoint, accessKeyId]) => {
-    const dockerFileContent = DockerFile({
-        s3Bucket: bucketId,
-        accessKey: secretAccessKey,
-        accessKeyId: accessKeyId,
-        s3Endpoint: s3Endpoint
-    });
-    return fs.writeFile(dir + "/Dockerfile", dockerFileContent);
-});
+		const dockerFile = Pulumi.all([
+			deployContextDirName,
+			bucket.id,
+			accessKey.secret,
+			bucket.bucketRegionalDomainName,
+			accessKey.id,
+		]).apply(
+			([dir, bucketId, secretAccessKey, s3Endpoint, accessKeyId]) => {
+				const dockerFileContent = DockerFile({
+					s3Bucket: bucketId,
+					accessKey: secretAccessKey,
+					accessKeyId: accessKeyId,
+					s3Endpoint: s3Endpoint,
+				});
+				return fs.writeFile(dir + '/Dockerfile', dockerFileContent);
+			}
+		);
 
-const deployContextDir = Pulumi.all([deployContextDirName, dockerFile, passwordFile]).apply(([dir]) => dir);
+		const deployContextDir = Pulumi.all([
+			deployContextDirName,
+			dockerFile,
+			passwordFile,
+		]).apply(([dir]) => dir);
 
-const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
-
-
+		const cluster = new aws.ecs.Cluster(
+			`${name}_cluster`,
+			{},
+			{ parent: this }
+		);
 
 		/**
 		 * Get a certificate for the cache server
@@ -324,8 +326,8 @@ const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
 				ingress: [
 					{
 						protocol: 'tcp',
-						fromPort: 80,
-						toPort: 80,
+						fromPort: 8080,
+						toPort: 8080,
 						cidrBlocks: ['0.0.0.0/0'],
 					},
 					{
@@ -343,10 +345,7 @@ const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
 			deriveAWSRestrictedELBName(name),
 			{
 				enableDeletionProtection: false,
-				subnets: vpc.publicSubnetIds.apply(subnetIds => [
-					subnetIds[0],
-					subnetIds[1],
-				]),
+				subnets: vpc.publicSubnetIds,
 				securityGroups: [albSecurityGroup.id],
 				enableHttp2: true,
 				internal: false,
@@ -358,10 +357,20 @@ const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
 		const targetGroup = new aws.lb.TargetGroup(
 			deriveAWSRestrictedTargetGroupName(name),
 			{
-				port: 80,
+				port: 8080,
 				targetType: 'ip',
 				protocol: 'HTTP',
 				vpcId: vpc.vpcId, // Add the VPC ID where this will be deployed
+				healthCheck: {
+					enabled: true,
+					interval: 30,
+					path: '/',
+					protocol: 'HTTP',
+					timeout: 5,
+					unhealthyThreshold: 2,
+					healthyThreshold: 2,
+					port: '8080',
+				},
 			},
 			{ parent: this }
 		);
@@ -426,11 +435,12 @@ const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
 			`${name}_service`,
 			{
 				cluster: cluster.arn,
-				assignPublicIp: true,
+				networkConfiguration: {
+					subnets: vpc.publicSubnetIds,
+				},
 				// if we aren't using the cache for a while, it's cool to turn it down
 				desiredCount: 1,
-				deploymentMaximumPercent: 100,
-				deploymentMinimumHealthyPercent: 0,
+				deploymentMinimumHealthyPercent: 100,
 				taskDefinitionArgs: {
 					container: {
 						name: `${name}_container`,
@@ -440,8 +450,8 @@ const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
 						essential: true,
 						portMappings: [
 							{
-								hostPort: 80,
-								containerPort: 80,
+								hostPort: 8080,
+								containerPort: 8080,
 								targetGroup: targetGroup,
 							},
 						],
