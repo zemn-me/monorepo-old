@@ -258,19 +258,15 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
-		const vpc = new awsx.ec2.Vpc(`${name}_vpc`, {}, { parent: this });
-
 		const loadBalancer = new awsx.lb.ApplicationLoadBalancer(
 			AWSIdentRestriction(25)(8)('-alb')(name),
 			{
 				enableDeletionProtection: false,
-				subnetIds: vpc.publicSubnetIds,
 				enableHttp2: true,
 				defaultTargetGroup: {
 					port: 8080,
 					targetType: 'ip',
 					protocol: 'HTTP',
-					vpcId: vpc.vpcId, // Add the VPC ID where this will be deployed
 					healthCheck: {
 						enabled: true,
 						interval: 30,
@@ -340,34 +336,15 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
-		const fargateSecurityGroup = new aws.ec2.SecurityGroup(
-			`${name}_sg`,
-			{
-				vpcId: vpc.vpcId,
-				egress: [
-					{
-						fromPort: 0,
-						toPort: 0,
-						protocol: '-1',
-						cidrBlocks: ['0.0.0.0/0'],
-						ipv6CidrBlocks: ['::/0'],
-					},
-				],
-			},
-			{ parent: this }
-		);
-
 		/**
 		 * The cache service itself on fargate.
 		 */
 		const service = new awsx.ecs.FargateService(
 			`${name}_service`,
 			{
+				// NAT gateway is CRAZY expensive!!!
+				assignPublicIp: true,
 				cluster: cluster.arn,
-				networkConfiguration: {
-					subnets: vpc.publicSubnetIds,
-					securityGroups: [fargateSecurityGroup.id],
-				},
 				// if we aren't using the cache for a while, it's cool to turn it down
 				desiredCount: 1,
 				deploymentMinimumHealthyPercent: 100,
@@ -393,11 +370,15 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			}
 		);
 
+		if (!process.env['GITHUB_TOKEN'])
+			throw new Error('missing GITHUB_TOKEN.');
+
 		new GitHub.ActionsSecret(
 			`${name}_actions_secret_cache_url`,
 			{
 				plaintextValue: Pulumi.interpolate`https://${username.result}:${password.result}@${record.name}`,
 				repository: `../${monorepo_github_name}`, // error: GET https://api.github.com/repos//zemn-me/monorepo/actions/secrets/public-key: 404 Not Found []
+				//                                                                                  ^
 				secretName: `BAZEL_REMOTE_CACHE_URL${
 					args.stage ? '_staging' : ''
 				}`,
