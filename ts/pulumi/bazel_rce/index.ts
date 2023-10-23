@@ -282,18 +282,26 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 						port: '8080',
 					},
 				},
+			},
+			{ parent: this }
+		);
 
-				listener: {
-					port: 443,
-					protocol: 'HTTPS',
-					certificateArn: certReq.validation.certificateArn,
-					sslPolicy: 'ELBSecurityPolicy-2016-08',
-					defaultActions: [
-						{
-							type: 'forward',
-						},
-					],
-				},
+		// i think this could be merged into loadBalancer but I'm not sure how, as
+		// targetGroupArn needs an ARN...
+		new aws.lb.Listener(
+			AWSIdentRestriction(25)(8)('-listener')(name),
+			{
+				loadBalancerArn: loadBalancer.loadBalancer.arn,
+				port: 443,
+				protocol: 'HTTPS',
+				certificateArn: certReq.validation.certificateArn,
+				sslPolicy: 'ELBSecurityPolicy-2016-08',
+				defaultActions: [
+					{
+						type: 'forward',
+						targetGroupArn: loadBalancer.defaultTargetGroup.arn,
+					},
+				],
 			},
 			{ parent: this }
 		);
