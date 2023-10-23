@@ -261,7 +261,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
-		const vpc = new awsx.ec2.Vpc(`${name}_vpc`, {});
+		const vpc = new awsx.ec2.Vpc(`${name}_vpc`, {}, { parent: this });
 
 		const loadBalancer = new awsx.lb.ApplicationLoadBalancer(
 			AWSIdentRestriction(25)(88)('-alb')(name),
