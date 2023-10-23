@@ -11,7 +11,6 @@ import * as awsx from '@pulumi/awsx';
 import * as GitHub from '@pulumi/github';
 import * as Pulumi from '@pulumi/pulumi';
 import * as random from '@pulumi/random';
-import { Command } from 'ts/github/actions';
 import * as Cert from 'ts/pulumi/lib/certificate';
 
 export interface Args {
@@ -43,8 +42,6 @@ const deriveAWSRestrictedName =
 const AWSIdentRestriction = deriveAWSRestrictedName(/[^a-z0-9.-]/g);
 
 const deriveAWSRestrictedBucketName = AWSIdentRestriction(56)(8)('-bucket');
-
-const deriveAWSRestrictedELBName = AWSIdentRestriction(32)(8)('-elb');
 
 interface DockerFileParams {
 	accessKey: string;
@@ -264,7 +261,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		const vpc = new awsx.ec2.Vpc(`${name}_vpc`, {}, { parent: this });
 
 		const loadBalancer = new awsx.lb.ApplicationLoadBalancer(
-			AWSIdentRestriction(25)(88)('-alb')(name),
+			AWSIdentRestriction(25)(8)('-alb')(name),
 			{
 				enableDeletionProtection: false,
 				subnetIds: vpc.publicSubnetIds,
@@ -285,24 +282,18 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 						port: '8080',
 					},
 				},
-			},
-			{ parent: this }
-		);
 
-		new aws.lb.Listener(
-			deriveAWSRestrictedELBName(name) + '-listener',
-			{
-				loadBalancerArn: loadBalancer.loadBalancer.arn,
-				port: 443,
-				protocol: 'HTTPS',
-				certificateArn: certReq.validation.certificateArn,
-				sslPolicy: 'ELBSecurityPolicy-2016-08',
-				defaultActions: [
-					{
-						type: 'forward',
-						targetGroupArn: loadBalancer.defaultTargetGroup.arn,
-					},
-				],
+				listener: {
+					port: 443,
+					protocol: 'HTTPS',
+					certificateArn: certReq.validation.certificateArn,
+					sslPolicy: 'ELBSecurityPolicy-2016-08',
+					defaultActions: [
+						{
+							type: 'forward',
+						},
+					],
+				},
 			},
 			{ parent: this }
 		);
@@ -375,15 +366,6 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			},
 			{ parent: this }
 		);
-
-		const self = GitHub.getUser({ username: '' }, { parent: this });
-
-		void self.then(self => {
-			if (!self.username)
-				Command('warning')({})(
-					'Unable to get GitHub username. Perhaps GITHUB_TOKEN needs to be specified?'
-				);
-		});
 
 		new GitHub.ActionsSecret(
 			`${name}_actions_secret_cache_url`,
