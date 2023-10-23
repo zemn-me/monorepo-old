@@ -343,7 +343,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		const fargateSecurityGroup = new aws.ec2.SecurityGroup(
 			`${name}_sg`,
 			{
-				vpcid: vpc.vpcID,
+				vpcId: vpc.vpcId,
 				egress: [
 					{
 						fromPort: 0,
@@ -397,7 +397,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			`${name}_actions_secret_cache_url`,
 			{
 				plaintextValue: Pulumi.interpolate`https://${username.result}:${password.result}@${record.name}`,
-				repository: monorepo_github_name,
+				repository: `../${monorepo_github_name}`, // error: GET https://api.github.com/repos//zemn-me/monorepo/actions/secrets/public-key: 404 Not Found []
 				secretName: `BAZEL_REMOTE_CACHE_URL${
 					args.stage ? '_staging' : ''
 				}`,
