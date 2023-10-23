@@ -113,7 +113,9 @@ jobs:
       || github.event_name == 'workflow_dispatch'
 
     # Performs all offline testing.
-    needs: Presubmit
+    # remove (maybe temporarily?) the presubmit requirement for this
+    # to speed up testing the cache.
+    # needs: Presubmit
     runs-on: ubuntu-latest
     steps:
       - name: Free Disk Space (Ubuntu)
