@@ -103,6 +103,7 @@
 		"pnpm": "npm run -- bazel run -- @pnpm//:pnpm --dir $PWD"
 	},
 	"dependencies": {
+		"@aws-sdk/region-config-resolver": "^3.433.0",
 		"@commander-js/extra-typings": "^11.0.0",
 		"@pulumi/command": "4.5.0",
 		"@pulumi/github": "^5.17.0",
