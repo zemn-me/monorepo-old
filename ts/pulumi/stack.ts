@@ -15,6 +15,9 @@ process.env.PATH = [
 	pulumi_dir,
 ].join(':');
 
+// for the github plugin
+process.env['GITHUB_OWNER'] = 'zemn-me';
+
 // check the binary is actually in there
 if (!fs.existsSync(pulumi_binary_path)) {
 	throw new Error('missing pulumi binary in ' + pulumi_dir);
