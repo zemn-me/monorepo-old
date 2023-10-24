@@ -8,6 +8,7 @@ else
 	echo "Using bazel remote cache."
 	echo "build --remote_cache=${BAZEL_REMOTE_CACHE_URL}" > .bazelrc
 	echo "test --remote_cache=${BAZEL_REMOTE_CACHE_URL}" > .bazelrc
+	echo "$BAZEL_REMOTE_CACHE_URL"
 fi
 
 echo "::endgroup::"
