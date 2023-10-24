@@ -85,6 +85,7 @@ jobs:
       github.event_name == 'pull_request'
       || github.event_name == 'workflow_dispatch'
       || github.event_name == 'push'
+      || github.event_name == 'merge_group'
     # Performs all offline testing.
     runs-on: ubuntu-latest
     steps:
@@ -111,6 +112,7 @@ jobs:
     if: >
       github.event_name == 'pull_request'
       || github.event_name == 'workflow_dispatch'
+      || github.event_name == 'merge_group'
 
     # Performs all offline testing.
     # remove (maybe temporarily?) the presubmit requirement for this
