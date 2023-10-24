@@ -3,6 +3,7 @@ import child_process from 'node:child_process';
 import { Command } from '@commander-js/extra-typings';
 import { Command as WorkflowCommand } from 'ts/github/actions';
 import deploy_to_staging from 'ts/pulumi/deploy_to_staging';
+import * as bazel from 'ts/bazel';
 
 const Task =
 	(name: string) =>
@@ -53,7 +54,7 @@ const cmd = new Command('presubmit')
 	.action(async o => {
 		// this is unfortunately necessary because my arm mac chokes on getting a running
 		// version of inkscape, and I'm deferring solving that to some later day.
-		const cwd = process.env['BUILD_WORKING_DIRECTORY'];
+		const cwd = bazel.workspaceDirectory;
 		if (cwd == undefined)
 			throw new Error(
 				'This executable is intended to be run from Bazel. ' +
