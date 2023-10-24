@@ -162,6 +162,7 @@ jobs:
           GITHUB_OWNER: zemn-me/monorepo
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_SECRET }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT_SECRETS_CREATOR }}
           BAZEL_REMOTE_CACHE_URL: ${{ secrets.BAZEL_REMOTE_CACHE_URL }}
   Submit:
     concurrency: pulumi_production
