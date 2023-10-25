@@ -306,6 +306,8 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
+		// ... [Rest of the code]
+
 		const record = new aws.route53.Record(
 			`${name}_record`,
 			{
@@ -340,23 +342,6 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
-		const fargateSecurityGroup = new aws.ec2.SecurityGroup(
-			`${name}_sg`,
-			{
-				vpcid: vpc.vpcID,
-				egress: [
-					{
-						fromPort: 0,
-						toPort: 0,
-						protocol: '-1',
-						cidrBlocks: ['0.0.0.0/0'],
-						ipv6CidrBlocks: ['::/0'],
-					},
-				],
-			},
-			{ parent: this }
-		);
-
 		/**
 		 * The cache service itself on fargate.
 		 */
@@ -366,7 +351,6 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 				cluster: cluster.arn,
 				networkConfiguration: {
 					subnets: vpc.publicSubnetIds,
-					securityGroups: [fargateSecurityGroup.id],
 				},
 				// if we aren't using the cache for a while, it's cool to turn it down
 				desiredCount: 1,
@@ -390,6 +374,10 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			},
 			{
 				parent: this,
+				dependsOn: vpc.natGateways.apply(nats => [
+					...nats,
+					vpc.internetGateway,
+				]),
 			}
 		);
 
