@@ -359,7 +359,8 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			`${name}_service`,
 			{
 				cluster: cluster.arn,
-				assignPublicIp: true,
+				// we don't want it accessible outside of TLS
+				assignPublicIp: false,
 				// if we aren't using the cache for a while, it's cool to turn it down
 				desiredCount: 1,
 				deploymentMaximumPercent: 100,
