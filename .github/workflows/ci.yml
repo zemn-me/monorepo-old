@@ -141,7 +141,6 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_SECRET }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BAZEL_REMOTE_CACHE_URL: ${{ secrets.BAZEL_REMOTE_CACHE_URL }}
       - name: Switch back to candidate branch
         uses: actions/checkout@v3
