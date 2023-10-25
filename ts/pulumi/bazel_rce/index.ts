@@ -120,7 +120,9 @@ WORKDIR /data
 VOLUME /data
 VOLUME /aws-config
 
-EXPOSE 80:8080
+# Expose ports 9090 and 9092
+EXPOSE 9090
+EXPOSE 9092
 
 COPY ${password_file_name} ${password_file_name}
 
@@ -132,7 +134,6 @@ CMD [ \\
 	"--s3.bucket=${params.s3Bucket}", \\
 	"--s3.endpoint=s3.us-east-1.amazonaws.com", \\
 	"--htpasswd_file=${password_file_name}", \\
-	"--http_address=8080", \\
 	"--max_size", \\
 	"5" \\
 ]
