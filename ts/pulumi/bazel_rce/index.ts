@@ -168,16 +168,14 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
+		const urlParamSafePasswordParams = { length: 25, special: false };
+
 		/**
 		 * Username used by the GitHub actions runners to use the cache bucket.
 		 */
 		const username = new random.RandomPassword(
 			`${name}_auth_username`,
-			{
-				length: 25,
-				// we need to shove this in a URL, remember!
-				special: false,
-			},
+			urlParamSafePasswordParams,
 			{ parent: this }
 		);
 
@@ -186,9 +184,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		 */
 		const password = new random.RandomPassword(
 			`${name}_auth_password`,
-			{
-				length: 25,
-			},
+			urlParamSafePasswordParams,
 			{ parent: this }
 		);
 
