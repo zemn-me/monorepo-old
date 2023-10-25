@@ -175,6 +175,8 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			`${name}_auth_username`,
 			{
 				length: 25,
+				// we need to shove this in a URL, remember!
+				special: false,
 			},
 			{ parent: this }
 		);
