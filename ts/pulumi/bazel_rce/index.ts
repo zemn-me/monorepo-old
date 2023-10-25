@@ -14,13 +14,6 @@ import * as random from '@pulumi/random';
 import { Command } from 'ts/github/actions';
 import * as Cert from 'ts/pulumi/lib/certificate';
 
-function later<T>(): [get: Promise<T>, set: (v: T) => void] {
-	let set: ((v: T) => void) | undefined;
-	const get = new Promise<T>(ok => (set = ok));
-
-	return [get, set!];
-}
-
 export interface Args {
 	/**
 	 * The zone to deploy to
@@ -247,12 +240,10 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			passwordFile,
 		]).apply(([dir]) => dir);
 
-		const [serviceId, setServiceId] = later<Pulumi.Resource>();
-
 		const cluster = new aws.ecs.Cluster(
 			`${name}_cluster`,
 			{},
-			{ parent: this, dependsOn: [Pulumi.output(serviceId)] }
+			{ parent: this }
 		);
 
 		/**
@@ -385,8 +376,6 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			},
 			{ parent: this }
 		);
-
-		setServiceId(service);
 
 		const self = GitHub.getUser({ username: '' }, { parent: this });
 
