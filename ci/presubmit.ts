@@ -60,7 +60,6 @@ const cmd = new Command('presubmit')
 				'This executable is intended to be run from Bazel. ' +
 					"If you really want to run it outside of using 'bazel run', please set BUILD_WORKING_DIRECTORY to $PWD."
 			);
-		console.log('Executing in detected directory', cwd);
 
 		// validate the pnpm lockfile.
 		if (!o.dangerouslySkipPnpmLockfileValidation) {
