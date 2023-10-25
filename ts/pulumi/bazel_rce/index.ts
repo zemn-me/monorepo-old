@@ -11,7 +11,6 @@ import * as awsx from '@pulumi/awsx';
 import * as GitHub from '@pulumi/github';
 import * as Pulumi from '@pulumi/pulumi';
 import * as random from '@pulumi/random';
-import { Command } from 'ts/github/actions';
 import * as Cert from 'ts/pulumi/lib/certificate';
 
 export interface Args {
@@ -372,12 +371,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		);
 
 		if (!process.env['GITHUB_TOKEN'])
-			console.log(
-				Command('error')({
-					file: 'ts/pulumi/bazel_rce/index.ts',
-					line: '375',
-				})('Missing GITHUB_TOKEN! Will not be able to update GitHub!')
-			);
+			throw new Error('missing GITHUB_TOKEN.');
 
 		new GitHub.ActionsSecret(
 			`${name}_actions_secret_cache_url`,
