@@ -430,7 +430,7 @@ export class Tests extends Pulumi.ComponentResource {
 	) {
 		super('ts:pulumi:bazel_rce:Tests', name, args, opts);
 
-		if (!args.mocked) {
+		if (args.mocked) {
 			this.done = Pulumi.output(new Promise(ok => ok([])));
 			return;
 		}

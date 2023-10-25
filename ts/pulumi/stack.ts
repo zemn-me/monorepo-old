@@ -43,8 +43,9 @@ const baseComponentName = 'monorepo';
 function handleErrorOutputs(v: Pulumi.Output<Error[]>) {
 	return new Promise<void>((ok, err) =>
 		v.apply(v => {
-			if (v.length < 0) return ok();
-			err(new Error(v.join(';')));
+			if (v.length === 0) return ok();
+			if (v.length === 1) return err(v[0]);
+			err(new Error(v.map(v => `${v}`).join(';')));
 		})
 	);
 }
