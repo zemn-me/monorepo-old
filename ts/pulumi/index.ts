@@ -1,11 +1,13 @@
 import * as aws from '@pulumi/aws';
 import * as Pulumi from '@pulumi/pulumi';
+import * as BazelCache from 'ts/pulumi/bazel_rce';
 import * as PleaseIntroduceMeToYourDog from 'ts/pulumi/pleaseintroducemetoyour.dog';
 import * as ShadwellIm from 'ts/pulumi/shadwell.im';
 import * as ZemnMe from 'ts/pulumi/zemn.me';
 
 export interface Args {
 	staging: boolean;
+	mocked: boolean;
 }
 
 /**
@@ -15,6 +17,8 @@ export class Component extends Pulumi.ComponentResource {
 	pleaseIntroduceMeToYourDog: PleaseIntroduceMeToYourDog.Component;
 	zemnMe: ZemnMe.Component;
 	shadwellIm: ShadwellIm.Component;
+	bazelCache: BazelCache.BazelRemoteCache;
+	done: Pulumi.Output<Error[]>;
 	constructor(
 		name: string,
 		args: Args,
@@ -75,6 +79,19 @@ export class Component extends Pulumi.ComponentResource {
 			},
 			{ parent: this }
 		);
+
+		this.bazelCache = new BazelCache.BazelRemoteCache(
+			`${name}_bazel_remote_cache_server`,
+			{
+				zoneId: Pulumi.output(zone.me.zemn.then(z => z.id)),
+				domain: stage('cache.bazel.zemn.me'),
+				stage: args.staging,
+				mocked: args.mocked,
+			},
+			{ parent: this }
+		);
+
+		this.done = this.bazelCache.done;
 
 		super.registerOutputs({
 			pleaseIntroduceMeToYourDog: this.pleaseIntroduceMeToYourDog,
