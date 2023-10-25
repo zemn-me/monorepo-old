@@ -120,7 +120,7 @@ WORKDIR /data
 VOLUME /data
 VOLUME /aws-config
 
-EXPOSE 80
+EXPOSE 80:80
 
 COPY ${password_file_name} ${password_file_name}
 
@@ -322,11 +322,10 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			deriveAWSRestrictedELBName(name),
 			{
 				listener: {
-					port: 80,
 					protocol: 'HTTPS',
 					certificateArn: certReq.validation.certificateArn,
 					sslPolicy: 'ELBSecurityPolicy-2016-08',
-				}
+				},
 			},
 			{ parent: this }
 		);
@@ -373,7 +372,6 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 						essential: true,
 						portMappings: [
 							{
-								hostPort: 80,
 								containerPort: 80,
 								targetGroup: loadBalancer.defaultTargetGroup,
 							},
