@@ -10,6 +10,9 @@ patchedDependencies:
     path: patches/svgo@3.0.2.patch
 
 dependencies:
+  '@aws-sdk/region-config-resolver':
+    specifier: ^3.433.0
+    version: 3.433.0
   '@commander-js/extra-typings':
     specifier: ^11.0.0
     version: 11.0.0(commander@11.0.0)
@@ -29,8 +32,8 @@ dependencies:
     specifier: 2.4.3
     version: 2.4.3
   aws-sdk:
-    specifier: ^2.1478.0
-    version: 2.1478.0
+    specifier: ^2.1459.0
+    version: 2.1459.0
   csstype:
     specifier: ^3.1.1
     version: 3.1.2
@@ -1369,7 +1372,6 @@ packages:
       '@smithy/util-config-provider': 2.0.0
       '@smithy/util-middleware': 2.0.5
       tslib: 2.6.0
-    dev: true
 
   /@aws-sdk/signature-v4-multi-region@3.363.0:
     resolution: {integrity: sha512-iWamQSpaBKg88LKuiUq8xO/7iyxJ+ORkA3qDhAwUqyTJOg87ma47yFf4ycCKqINnflc3AIGLGzBHnkBc4cMF5g==}
@@ -4726,7 +4728,7 @@ packages:
       '@pulumi/docker': 4.4.4
       '@pulumi/pulumi': 3.81.0
       '@types/aws-lambda': 8.10.119
-      aws-sdk: 2.1478.0
+      aws-sdk: 2.1459.0
       docker-classic: /@pulumi/docker@3.6.1
       mime: 2.6.0
     transitivePeerDependencies:
@@ -5687,7 +5689,6 @@ packages:
       '@smithy/shared-ini-file-loader': 2.2.2
       '@smithy/types': 2.4.0
       tslib: 2.6.0
-    dev: true
 
   /@smithy/node-http-handler@1.0.3:
     resolution: {integrity: sha512-PcPUSzTbIb60VCJCiH0PU0E6bwIekttsIEf5Aoo/M0oTfiqsxHTn0Rcij6QoH6qJy6piGKXzLSegspXg5+Kq6g==}
@@ -5725,7 +5726,6 @@ packages:
     dependencies:
       '@smithy/types': 2.4.0
       tslib: 2.6.0
-    dev: true
 
   /@smithy/protocol-http@1.1.1:
     resolution: {integrity: sha512-mFLFa2sSvlUxm55U7B4YCIsJJIMkA6lHxwwqOaBkral1qxFz97rGffP/mmd4JDuin1EnygiO5eNJGgudiUgmDQ==}
@@ -5803,7 +5803,6 @@ packages:
     dependencies:
       '@smithy/types': 2.4.0
       tslib: 2.6.0
-    dev: true
 
   /@smithy/signature-v4@1.0.2:
     resolution: {integrity: sha512-rpKUhmCuPmpV5dloUkOb9w1oBnJatvKQEjIHGmkjRGZnC3437MTdzWej9TxkagcZ8NRRJavYnEUixzxM1amFig==}
@@ -5865,7 +5864,6 @@ packages:
     engines: {node: '>=14.0.0'}
     dependencies:
       tslib: 2.6.0
-    dev: true
 
   /@smithy/url-parser@1.0.2:
     resolution: {integrity: sha512-0JRsDMQe53F6EHRWksdcavKDRjyqp8vrjakg8EcCUOa7PaFRRB1SO/xGZdzSlW1RSTWQDEksFMTCEcVEKmAoqA==}
@@ -5953,7 +5951,6 @@ packages:
     engines: {node: '>=14.0.0'}
     dependencies:
       tslib: 2.6.0
-    dev: true
 
   /@smithy/util-defaults-mode-browser@1.0.2:
     resolution: {integrity: sha512-J1u2PO235zxY7dg0+ZqaG96tFg4ehJZ7isGK1pCBEA072qxNPwIpDzUVGnLJkHZvjWEGA8rxIauDtXfB0qxeAg==}
@@ -6028,7 +6025,6 @@ packages:
     dependencies:
       '@smithy/types': 2.4.0
       tslib: 2.6.0
-    dev: true
 
   /@smithy/util-retry@1.0.4:
     resolution: {integrity: sha512-RnZPVFvRoqdj2EbroDo3OsnnQU8eQ4AlnZTOGusbYKybH3269CFdrZfZJloe60AQjX7di3J6t/79PjwCLO5Khw==}
@@ -7427,8 +7423,8 @@ packages:
     resolution: {integrity: sha512-DMD0KiN46eipeziST1LPP/STfDU0sufISXmjSgvVsoU2tqxctQeASejWcfNtxYKqETM1UxQ8sp2OrSBWpHY6sw==}
     engines: {node: '>= 0.4'}
 
-  /aws-sdk@2.1478.0:
-    resolution: {integrity: sha512-F+Ud9FxMD4rwvGbEXn7qc25Q19N4p+9klRjiH1llFLYssPw6TRtY464Cry/jG4OzuYkE/DsnhcwVFEJjGvMmuQ==}
+  /aws-sdk@2.1459.0:
+    resolution: {integrity: sha512-My45PgQYhRTh6fOeZ94ELUoXzza/6gTy0J22aK4iy0DEA+uE5gjr1VthnIwbLYNMeEqn8xwJZuNJqvi/WaUUcQ==}
     engines: {node: '>= 10.0.0'}
     dependencies:
       buffer: 4.9.2
