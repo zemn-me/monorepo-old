@@ -348,7 +348,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			`${name}_image`,
 			{
 				repositoryUrl: repo.url,
-				context: deployContextDir,
+				path: deployContextDir,
 			},
 			{ parent: this }
 		);
