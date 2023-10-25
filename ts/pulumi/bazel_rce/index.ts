@@ -45,6 +45,8 @@ const AWSIdentRestriction = deriveAWSRestrictedName(/[^a-z0-9.-]/g);
 const deriveAWSRestrictedBucketName = AWSIdentRestriction(56)(8)('-bucket');
 
 const deriveAWSRestrictedELBName = AWSIdentRestriction(32)(8)('-elb');
+const deriveAWSRestrictedTargetGroupName =
+	AWSIdentRestriction(32)(8)('-targetGroup');
 
 interface DockerFileParams {
 	accessKey: string;
@@ -269,21 +271,26 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 				enableDeletionProtection: false,
 				subnetIds: vpc.publicSubnetIds,
 				enableHttp2: true,
-				defaultTargetGroup: {
-					port: 8080,
-					targetType: 'ip',
+			},
+			{ parent: this }
+		);
+
+		const targetGroup = new aws.lb.TargetGroup(
+			deriveAWSRestrictedTargetGroupName(name),
+			{
+				port: 8080,
+				targetType: 'ip',
+				protocol: 'HTTP',
+				vpcId: vpc.vpcId, // Add the VPC ID where this will be deployed
+				healthCheck: {
+					enabled: true,
+					interval: 30,
+					path: '/',
 					protocol: 'HTTP',
-					vpcId: vpc.vpcId, // Add the VPC ID where this will be deployed
-					healthCheck: {
-						enabled: true,
-						interval: 30,
-						path: '/',
-						protocol: 'HTTP',
-						timeout: 5,
-						unhealthyThreshold: 2,
-						healthyThreshold: 2,
-						port: '8080',
-					},
+					timeout: 5,
+					unhealthyThreshold: 2,
+					healthyThreshold: 2,
+					port: '8080',
 				},
 			},
 			{ parent: this }
@@ -300,7 +307,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 				defaultActions: [
 					{
 						type: 'forward',
-						targetGroupArn: loadBalancer.defaultTargetGroup.arn,
+						targetGroupArn: targetGroup.arn,
 					},
 				],
 			},
@@ -367,7 +374,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 							{
 								hostPort: 8080,
 								containerPort: 8080,
-								targetGroup: loadBalancer.defaultTargetGroup,
+								targetGroup: targetGroup,
 							},
 						],
 					},
