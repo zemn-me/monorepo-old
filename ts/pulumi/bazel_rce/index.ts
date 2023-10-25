@@ -372,13 +372,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 					},
 				},
 			},
-			{
-				parent: this,
-				dependsOn: vpc.natGateways.apply(nats => [
-					...nats,
-					vpc.internetGateway,
-				]),
-			}
+			{ parent: this }
 		);
 
 		new GitHub.ActionsSecret(
