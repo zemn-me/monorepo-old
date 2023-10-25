@@ -17,6 +17,11 @@ import * as bazel from 'ts/bazel';
 import { Command } from 'ts/github/actions';
 import * as Cert from 'ts/pulumi/lib/certificate';
 
+import {
+	containsRemoteCacheSuccess,
+	containsRemoteCacheWarning,
+} from './matchers/matchers';
+
 export interface Args {
 	/**
 	 * The zone to deploy to
@@ -458,12 +463,25 @@ export class Tests extends Pulumi.ComponentResource {
 					401 Unauthorized
 				*/
 
+				// a remote cache warning must be promoted to an error
 				if (
 					[stdout, stderr].some(fileDescriptor =>
-						/\s+WARNING: Remote Cache:/.test(fileDescriptor)
+						containsRemoteCacheWarning(fileDescriptor)
 					)
 				)
 					throw new Error(`bazel remote cache error: ${stderr}`);
+
+				// we must see that the remote has been used
+				// https://bazel.build/remote/cache-remote
+				// INFO: 11 processes: 6 remote cache hit, 3 internal, 2 remote.
+				if (
+					![stdout, stderr].some(fileDescriptor =>
+						containsRemoteCacheSuccess(fileDescriptor)
+					)
+				)
+					throw new Error(
+						`bazel remote cache server was not used in testing: ${stderr}`
+					);
 				return [];
 			} catch (e) {
 				return [
