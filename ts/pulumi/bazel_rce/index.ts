@@ -440,13 +440,30 @@ export class Tests extends Pulumi.ComponentResource {
 		]).apply(async ([endpoint, serviceName]) => {
 			// build something simple with bazel
 			try {
-				await util.promisify(child_process.execFile)(
+				const { stdout, stderr } = await util.promisify(
+					child_process.execFile
+				)(
 					'bazel',
 					['test', '//testing/...', `--remote_cache=${endpoint}`],
 					{
 						cwd: bazel.workspaceDirectory(),
 					}
 				);
+
+				/*
+					 WARNING: Remote Cache: 21 errors during bulk transfer:
+					com.google.devtools.build.lib.remote.http.HttpException: 401 Unauthorized
+					401 Unauthorized
+					com.google.devtools.build.lib.remote.http.HttpException: 401 Unauthorized
+					401 Unauthorized
+				*/
+
+				if (
+					[stdout, stderr].some(fileDescriptor =>
+						/^\s+WARNING: Remote Cache:/g.test(fileDescriptor)
+					)
+				)
+					throw new Error(`bazel remote cache error: ${stderr}`);
 				return [];
 			} catch (e) {
 				return [
