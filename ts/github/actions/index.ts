@@ -5,8 +5,6 @@ interface FilePositionParams {
 	line?: string;
 	endLine?: string;
 	title?: string;
-	col?: string;
-	endColumn?: string;
 }
 
 interface CommandValidation {
@@ -20,13 +18,6 @@ interface CommandValidation {
 
 const isDefinedString = (v: string | undefined): v is string => v !== undefined;
 
-// https://github.com/actions/toolkit/blob/7b617c260dff86f8d044d5ab0425444b29fa0d18/packages/core/src/command.ts#L80-L85
-const escapeCommandValue = (s: string) =>
-	s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
-
-const escapeKeyValue = (s: string) =>
-	escapeCommandValue(s).replace(/=/g, '%3D');
-
 const commandIdent =
 	<T extends keyof CommandValidation>(command: T) =>
 	(parameters: CommandValidation[T]) =>
@@ -36,7 +27,13 @@ const commandIdent =
 		`::${[
 			command,
 			Object.entries(parameters)
-				.map(([k, v]) => `${escapeKeyValue(k)}=${escapeKeyValue(v)}`)
+				.map(
+					([k, v]) =>
+						`${k.replaceAll(/[,=]/g, '')}=${v.replaceAll(
+							/[=,]/g,
+							''
+						)}`
+				)
 				.join(','),
 		]
 			.filter(isDefinedString)
@@ -46,9 +43,7 @@ export const Command =
 	<T extends keyof CommandValidation>(command: T) =>
 	(parameters: CommandValidation[T]) =>
 	(line?: string) =>
-		`${commandIdent(command)(parameters)}${
-			line ? escapeCommandValue(line) : ''
-		}`;
+		(line ?? '').replaceAll(/^/g, commandIdent(command)(parameters));
 
 export const Summarize = async (summary: string) => {
 	const step_summary_file_path = process.env['GITHUB_STEP_SUMMARY'];
