@@ -273,26 +273,11 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		);
 
 		/**
-		 * Content of the Dockerfile needed to turn up this service.
-		 */
-		const dockerFile = Pulumi.all([
-			deployContextDirName,
-			bucket.id,
-			accessKey.secret,
-		]).apply(([dir, bucketId, accessKey]) =>
-			fs.writeFile(
-				path.join(dir, 'Dockerfile'),
-				DockerFile({ s3Bucket: bucketId, accessKey })
-			)
-		);
-
-		/**
 		 * Promise to the deploy directory that also ensures its contents are written.
 		 */
 		const deployContextDir = Pulumi.all([
 			deployContextDirName,
 			passwordFile,
-			dockerFile,
 		]).apply(([dirName]) => dirName);
 
 		/**
@@ -341,12 +326,21 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		);
 
 		/**
+		 * Content of the Dockerfile needed to turn up this service.
+		 */
+		const dockerFile = Pulumi.all([bucket.id, accessKey.secret]).apply(
+			([bucketId, accessKey]) =>
+				DockerFile({ s3Bucket: bucketId, accessKey })
+		);
+
+		/**
 		 * The built Docker image (uploaded to the repo).
 		 */
 		const image = new awsx.ecr.Image(
 			`${name}_image`,
 			{
 				repositoryUrl: repo.url,
+				dockerfile: dockerFile,
 				path: deployContextDir,
 			},
 			{ parent: this }
