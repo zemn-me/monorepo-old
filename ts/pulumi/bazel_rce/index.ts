@@ -11,7 +11,6 @@ import * as awsx from '@pulumi/awsx';
 import * as GitHub from '@pulumi/github';
 import * as Pulumi from '@pulumi/pulumi';
 import * as random from '@pulumi/random';
-import { Command } from 'ts/github/actions';
 import * as Cert from 'ts/pulumi/lib/certificate';
 
 export interface Args {
@@ -381,9 +380,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 
 		void self.then(self => {
 			if (!self.username)
-				Command('warning')({})(
-					'Unable to get GitHub username. Perhaps GITHUB_TOKEN needs to be specified?'
-				);
+				throw `Unable to get own user details. GITHUB_TOKEN may not be configured.`;
 		});
 
 		new GitHub.ActionsSecret(
