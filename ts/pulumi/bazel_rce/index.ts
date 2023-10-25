@@ -432,11 +432,21 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			}
 		);
 
+		/**
+		 * Get a handle on the monorepo itself.
+		 */
+		const monorepo = GitHub.getRepository(
+			{
+				fullName: monorepo_github_name,
+			},
+			{ parent: this }
+		);
+
 		new GitHub.ActionsSecret(
 			`${name}_actions_secret_cache_url`,
 			{
 				plaintextValue: Pulumi.interpolate`https://${username.result}:${password.result}@${record.name}`,
-				repository: monorepo_github_name,
+				repository: monorepo.then(v => v.fullName),
 				secretName: 'BAZEL_REMOTE_CACHE_URL',
 			},
 			{ parent: this }
