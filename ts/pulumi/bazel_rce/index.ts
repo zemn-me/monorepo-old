@@ -376,13 +376,6 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
-		const self = GitHub.getUser({ username: '' }, { parent: this });
-
-		void self.then(self => {
-			if (!self.username)
-				throw `Unable to get own user details. GITHUB_TOKEN may not be configured.`;
-		});
-
 		new GitHub.ActionsSecret(
 			`${name}_actions_secret_cache_url`,
 			{
