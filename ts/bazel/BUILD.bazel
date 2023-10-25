@@ -1,0 +1,13 @@
+load("//ts:rules.bzl", "ts_project")
+
+
+package(default_visibility = ["//:__subpackages__"])
+
+ts_project(
+    name = "bazel",
+    deps = [
+		"//:node_modules/@types/node",
+		"//ts"
+    ]
+)
+
