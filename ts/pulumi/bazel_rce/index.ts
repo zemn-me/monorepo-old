@@ -438,11 +438,11 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		);
 
 		new GitHub.ActionsSecret(
-			`${name}_actions_secret_cache_url`,
+			`${name}_actions_secret_cache_url${args.stage?"_staging":""}`,
 			{
 				plaintextValue: Pulumi.interpolate`https://${username.result}:${password.result}@${record.name}`,
 				repository: monorepo_github_name,
-				secretName: `BAZEL_REMOTE_CACHE_URL${args.stage?"_staging":""}`,
+				secretName: 'BAZEL_REMOTE_CACHE_URL',
 			},
 			{ parent: this }
 		);
