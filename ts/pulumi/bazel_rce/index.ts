@@ -446,7 +446,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			`${name}_actions_secret_cache_url`,
 			{
 				plaintextValue: Pulumi.interpolate`https://${username.result}:${password.result}@${record.name}`,
-				repository: monorepo.then(v => v.fullName),
+				repository: monorepo.then(v => v.name),
 				secretName: 'BAZEL_REMOTE_CACHE_URL',
 			},
 			{ parent: this }
