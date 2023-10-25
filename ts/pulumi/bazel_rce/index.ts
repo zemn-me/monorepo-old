@@ -96,14 +96,10 @@ const AWSIdentRestriction = deriveAWSRestrictedName(/[^a-z0-9.-]/g);
 const deriveAWSRestrictedBucketName = AWSIdentRestriction(56)(8)('-bucket');
 
 const deriveAWSRestrictedELBName = AWSIdentRestriction(32)(8)('-elb');
-const deriveAWSRestrictedTargetGroupName =
-	AWSIdentRestriction(32)(8)('-targetGroup');
 
 interface DockerFileParams {
 	accessKey: string;
 	s3Bucket: string;
-	s3Endpoint: string;
-	accessKeyId: string;
 }
 
 const password_file_name = '.htpasswd';
@@ -116,6 +112,7 @@ FROM buchgr/bazel-remote-cache:latest
 
 # Set the user and group to 1000:1000
 USER 1000:1000
+
 # Set the working directory
 WORKDIR /data
 
@@ -129,14 +126,15 @@ COPY ${password_file_name} ${password_file_name}
 
 # Set the entry point and command
 CMD [ \\
-	"--s3.auth_method=access_key", \\
+	"--s3.auth_method=aws_credentials_file", \\
+	"--s3.aws_profile=supercool", \\
 	"--s3.secret_access_key=${params.accessKey}", \\
-	"--s3.secret_access_key_id=${params.accessKeyId}", \\
 	"--s3.bucket=${params.s3Bucket}", \\
-	"--s3.endpoint=${params.s3Endpoint}", \\Id
+	"--s3.endpoint=s3.us-east-1.amazonaws.com", \\
 	"--htpasswd_file=${password_file_name}", \\
-	"--http_address=0.0.0.0:80", \\
-	"--max_size=5", \\
+	"--http_address=80", \\
+	"--max_size", \\
+	"5" \\
 ]
 
 
@@ -273,27 +271,37 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			fs.writeFile(path.join(dir, password_file_name), content)
 		);
 
-const dockerFile= Pulumi.all([
-    deployContextDirName,
-    bucket.id,
-    accessKey.secret,
-    bucket.bucketRegionalDomainName,
-    accessKey.id
-]).apply(([dir, bucketId, secretAccessKey, s3Endpoint, accessKeyId]) => {
-    const dockerFileContent = DockerFile({
-        s3Bucket: bucketId,
-        accessKey: secretAccessKey,
-        accessKeyId: accessKeyId,
-        s3Endpoint: s3Endpoint
-    });
-    return fs.writeFile(dir + "/Dockerfile", dockerFileContent);
-});
+		/**
+		 * Content of the Dockerfile needed to turn up this service.
+		 */
+		const dockerFile = Pulumi.all([
+			deployContextDirName,
+			bucket.id,
+			accessKey.secret,
+		]).apply(([dir, bucketId, accessKey]) =>
+			fs.writeFile(
+				path.join(dir, 'Dockerfile'),
+				DockerFile({ s3Bucket: bucketId, accessKey })
+			)
+		);
 
-const deployContextDir = Pulumi.all([deployContextDirName, dockerFile, passwordFile]).apply(([dir]) => dir);
+		/**
+		 * Promise to the deploy directory that also ensures its contents are written.
+		 */
+		const deployContextDir = Pulumi.all([
+			deployContextDirName,
+			passwordFile,
+			dockerFile,
+		]).apply(([dirName]) => dirName);
 
-const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
-
-
+		/**
+		 * Cluster on which the cache service will run
+		 */
+		const cluster = new aws.ecs.Cluster(
+			`${name}_cluster`,
+			{},
+			{ parent: this }
+		);
 
 		/**
 		 * Get a certificate for the cache server
@@ -307,95 +315,23 @@ const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
 			{ parent: this }
 		);
 
-		const vpc = new awsx.ec2.Vpc(`${name}_vpc`, {});
-
-		const albSecurityGroup = new aws.ec2.SecurityGroup(
-			`${name}_alb_sg`,
-			{
-				vpcId: vpc.vpcId,
-				egress: [
-					{
-						protocol: '-1',
-						fromPort: 0,
-						toPort: 0,
-						cidrBlocks: ['0.0.0.0/0'],
-					},
-				],
-				ingress: [
-					{
-						protocol: 'tcp',
-						fromPort: 80,
-						toPort: 80,
-						cidrBlocks: ['0.0.0.0/0'],
-					},
-					{
-						protocol: 'tcp',
-						fromPort: 443,
-						toPort: 443,
-						cidrBlocks: ['0.0.0.0/0'],
-					},
-				],
-			},
-			{ parent: this }
-		);
-
-		const loadBalancer = new aws.lb.LoadBalancer(
+		/**
+		 * Load balancer for the cache service
+		 */
+		const loadBalancer = new awsx.lb.ApplicationLoadBalancer(
 			deriveAWSRestrictedELBName(name),
 			{
-				enableDeletionProtection: false,
-				subnets: vpc.publicSubnetIds.apply(subnetIds => [
-					subnetIds[0],
-					subnetIds[1],
-				]),
-				securityGroups: [albSecurityGroup.id],
-				enableHttp2: true,
-				internal: false,
-				loadBalancerType: 'application',
+				defaultTargetGroup: {
+					protocol: 'http',
+					port: 80,
+				},
+				listener: {
+					protocol: 'HTTPS',
+					certificateArn: certReq.validation.certificateArn,
+					sslPolicy: 'ELBSecurityPolicy-2016-08',
+				}
 			},
 			{ parent: this }
-		);
-
-		const targetGroup = new aws.lb.TargetGroup(
-			deriveAWSRestrictedTargetGroupName(name),
-			{
-				port: 80,
-				targetType: 'ip',
-				protocol: 'HTTP',
-				vpcId: vpc.vpcId, // Add the VPC ID where this will be deployed
-			},
-			{ parent: this }
-		);
-
-		new aws.lb.Listener(
-			deriveAWSRestrictedELBName(name) + '-listener',
-			{
-				loadBalancerArn: loadBalancer.arn,
-				port: 443,
-				protocol: 'HTTPS',
-				certificateArn: certReq.validation.certificateArn,
-				sslPolicy: 'ELBSecurityPolicy-2016-08',
-				defaultActions: [
-					{
-						type: 'forward',
-						targetGroupArn: targetGroup.arn,
-					},
-				],
-			},
-			{ parent: this }
-		);
-
-		// ... [Rest of the code]
-
-		const record = new aws.route53.Record(
-			`${name}_record`,
-			{
-				name: args.domain,
-				type: 'CNAME',
-				zoneId: args.zoneId,
-				ttl: 120,
-				records: [loadBalancer.dnsName],
-			},
-			{ parent: this, deleteBeforeReplace: true }
 		);
 
 		/**
@@ -442,13 +378,25 @@ const cluster = new aws.ecs.Cluster(`${name}_cluster`, {}, { parent: this });
 							{
 								hostPort: 80,
 								containerPort: 80,
-								targetGroup: targetGroup,
+								targetGroup: loadBalancer.defaultTargetGroup,
 							},
 						],
 					},
 				},
 			},
 			{ parent: this }
+		);
+
+		const record = new aws.route53.Record(
+			`${name}_record`,
+			{
+				name: args.domain,
+				type: 'CNAME',
+				zoneId: args.zoneId,
+				ttl: 120,
+				records: [loadBalancer.loadBalancer.dnsName],
+			},
+			{ parent: this, deleteBeforeReplace: true }
 		);
 
 		new GitHub.ActionsSecret(
