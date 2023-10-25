@@ -1,6 +1,7 @@
 import child_process from 'node:child_process';
 
 import { Command } from '@commander-js/extra-typings';
+import * as bazel from 'ts/bazel';
 import { Command as WorkflowCommand } from 'ts/github/actions';
 import deploy_to_staging from 'ts/pulumi/deploy_to_staging';
 
@@ -53,13 +54,12 @@ const cmd = new Command('presubmit')
 	.action(async o => {
 		// this is unfortunately necessary because my arm mac chokes on getting a running
 		// version of inkscape, and I'm deferring solving that to some later day.
-		const cwd = process.env['BUILD_WORKING_DIRECTORY'];
+		const cwd = bazel.workspaceDirectory();
 		if (cwd == undefined)
 			throw new Error(
 				'This executable is intended to be run from Bazel. ' +
 					"If you really want to run it outside of using 'bazel run', please set BUILD_WORKING_DIRECTORY to $PWD."
 			);
-		console.log('Executing in detected directory', cwd);
 
 		// validate the pnpm lockfile.
 		if (!o.dangerouslySkipPnpmLockfileValidation) {

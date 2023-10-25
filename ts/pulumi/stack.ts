@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import * as Pulumi from '@pulumi/pulumi';
 import { LocalWorkspace, Stack } from '@pulumi/pulumi/automation';
 import * as monorepo from 'ts/pulumi';
 
@@ -39,13 +40,28 @@ async function provisionStack(s: Promise<Stack>): Promise<Stack> {
 
 const baseComponentName = 'monorepo';
 
+function handleErrorOutputs(v: Pulumi.Output<Error[]>) {
+	return new Promise<void>((ok, err) =>
+		v.apply(v => {
+			if (v.length === 0) return ok();
+			if (v.length === 1) return err(v[0]);
+			err(new Error(v.map(v => `${v}`).join(';')));
+		})
+	);
+}
+
 export async function production(): Promise<Stack> {
 	return provisionStack(
 		LocalWorkspace.createOrSelectStack({
 			stackName: 'prod',
 			projectName,
 			async program() {
-				new monorepo.Component(baseComponentName, { staging: false });
+				return handleErrorOutputs(
+					new monorepo.Component(baseComponentName, {
+						mocked: false,
+						staging: false,
+					}).done
+				);
 			},
 		})
 	);
@@ -57,7 +73,12 @@ export async function staging(): Promise<Stack> {
 			stackName: 'staging',
 			projectName,
 			async program() {
-				new monorepo.Component(baseComponentName, { staging: true });
+				return handleErrorOutputs(
+					new monorepo.Component(baseComponentName, {
+						mocked: false,
+						staging: true,
+					}).done
+				);
 			},
 		})
 	);

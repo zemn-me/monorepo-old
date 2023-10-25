@@ -7,6 +7,7 @@ import * as ZemnMe from 'ts/pulumi/zemn.me';
 
 export interface Args {
 	staging: boolean;
+	mocked: boolean;
 }
 
 /**
@@ -17,6 +18,7 @@ export class Component extends Pulumi.ComponentResource {
 	zemnMe: ZemnMe.Component;
 	shadwellIm: ShadwellIm.Component;
 	bazelCache: BazelCache.BazelRemoteCache;
+	done: Pulumi.Output<Error[]>;
 	constructor(
 		name: string,
 		args: Args,
@@ -84,9 +86,12 @@ export class Component extends Pulumi.ComponentResource {
 				zoneId: Pulumi.output(zone.me.zemn.then(z => z.id)),
 				domain: stage('cache.bazel.zemn.me'),
 				stage: args.staging,
+				mocked: args.mocked,
 			},
 			{ parent: this }
 		);
+
+		this.done = this.bazelCache.done;
 
 		super.registerOutputs({
 			pleaseIntroduceMeToYourDog: this.pleaseIntroduceMeToYourDog,

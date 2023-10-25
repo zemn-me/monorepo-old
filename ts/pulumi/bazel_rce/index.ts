@@ -2,15 +2,18 @@
  * @fileoverview Provisions a bazel remote caching server
  * @see https://bazel.build/remote/caching
  */
+import child_process from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import util from 'node:util';
 
 import * as aws from '@pulumi/aws';
 import * as awsx from '@pulumi/awsx';
 import * as GitHub from '@pulumi/github';
 import * as Pulumi from '@pulumi/pulumi';
 import * as random from '@pulumi/random';
+import * as bazel from 'ts/bazel';
 import { Command } from 'ts/github/actions';
 import * as Cert from 'ts/pulumi/lib/certificate';
 
@@ -26,6 +29,8 @@ export interface Args {
 	 * Adds the prefix STAGING_ to the secret name.
 	 */
 	stage: boolean;
+
+	mocked: boolean;
 }
 
 const deriveAWSRestrictedName =
@@ -82,6 +87,7 @@ CMD [ \\
 }
 
 export class BazelRemoteCache extends Pulumi.ComponentResource {
+	done: Pulumi.Output<Error[]>;
 	constructor(
 		name: string,
 		args: Args,
@@ -162,14 +168,14 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this }
 		);
 
+		const urlParamSafePasswordParams = { length: 25, special: false };
+
 		/**
 		 * Username used by the GitHub actions runners to use the cache bucket.
 		 */
 		const username = new random.RandomPassword(
 			`${name}_auth_username`,
-			{
-				length: 25,
-			},
+			urlParamSafePasswordParams,
 			{ parent: this }
 		);
 
@@ -178,9 +184,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		 */
 		const password = new random.RandomPassword(
 			`${name}_auth_password`,
-			{
-				length: 25,
-			},
+			urlParamSafePasswordParams,
 			{ parent: this }
 		);
 
@@ -378,10 +382,12 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 				})('Missing GITHUB_TOKEN! Will not be able to update GitHub!')
 			);
 
+		const httpEndpoint = Pulumi.interpolate`https://${username.result}:${password.result}@${record.name}`;
+
 		new GitHub.ActionsSecret(
 			`${name}_actions_secret_cache_url`,
 			{
-				plaintextValue: Pulumi.interpolate`https://${username.result}:${password.result}@${record.name}`,
+				plaintextValue: httpEndpoint,
 				repository: 'monorepo', // error: GET https://api.github.com/repos//zemn-me/monorepo/actions/secrets/public-key: 404 Not Found []
 				//                                                                                  ^
 				secretName: `BAZEL_REMOTE_CACHE_URL${
@@ -391,6 +397,70 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			{ parent: this, deleteBeforeReplace: true }
 		);
 
-		super.registerOutputs({ service, bucketPolicy });
+		const tests = new Tests(
+			`${name}_tests`,
+			{ httpEndpoint, mocked: args.mocked, service },
+			{ parent: this }
+		);
+
+		this.done = tests.done;
+
+		super.registerOutputs({
+			service,
+			bucketPolicy,
+			success: tests.done,
+		});
+	}
+}
+
+interface TestArgs {
+	httpEndpoint: Pulumi.Input<string>;
+	service: awsx.ecs.FargateService;
+	mocked: boolean;
+}
+
+export class Tests extends Pulumi.ComponentResource {
+	done: Pulumi.Output<Error[]>;
+	constructor(
+		name: string,
+		args: TestArgs,
+		opts?: Pulumi.ComponentResourceOptions
+	) {
+		super('ts:pulumi:bazel_rce:Tests', name, args, opts);
+
+		if (args.mocked) {
+			this.done = Pulumi.output(new Promise(ok => ok([])));
+			return;
+		}
+
+		// test that everything is working as expected
+		this.done = Pulumi.all([
+			args.httpEndpoint,
+			args.service.service.name,
+		]).apply(async ([endpoint, serviceName]) => {
+			// build something simple with bazel
+			try {
+				await util.promisify(child_process.execFile)(
+					'bazel',
+					['test', '//testing/...', `--remote_cache=${endpoint}`],
+					{
+						cwd: bazel.workspaceDirectory(),
+					}
+				);
+				return [];
+			} catch (e) {
+				return [
+					new Error(
+						`Bazel remote execution failed for ${serviceName}: ${e}${
+							e instanceof Object && 'stderr' in e
+								? `; ${e.stderr}`
+								: ''
+						}`
+					),
+				];
+			}
+		});
+
+		super.registerOutputs({ done: this.done });
 	}
 }
