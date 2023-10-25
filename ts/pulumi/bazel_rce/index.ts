@@ -460,7 +460,7 @@ export class Tests extends Pulumi.ComponentResource {
 
 				if (
 					[stdout, stderr].some(fileDescriptor =>
-						/^\s+WARNING: Remote Cache:/g.test(fileDescriptor)
+						/\s+WARNING: Remote Cache:/.test(fileDescriptor)
 					)
 				)
 					throw new Error(`bazel remote cache error: ${stderr}`);
