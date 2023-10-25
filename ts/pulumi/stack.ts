@@ -15,6 +15,9 @@ process.env.PATH = [
 	pulumi_dir,
 ].join(':');
 
+// for the github plugin
+process.env['GITHUB_OWNER'] = 'zemn-me';
+
 // check the binary is actually in there
 if (!fs.existsSync(pulumi_binary_path)) {
 	throw new Error('missing pulumi binary in ' + pulumi_dir);
@@ -28,6 +31,7 @@ export const projectName = 'monorepo-2';
 
 async function provisionStack(s: Promise<Stack>): Promise<Stack> {
 	await (await s).workspace.installPlugin('aws', 'v5.13.0'); // can I get rid of this? it seems stupid
+	await (await s).workspace.installPlugin('github', 'v5.17.0'); // can I get rid of this? it seems stupid
 	await (await s).setConfig('aws:region', { value: 'us-east-1' });
 
 	return s;
