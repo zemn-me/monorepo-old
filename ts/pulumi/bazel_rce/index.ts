@@ -201,8 +201,13 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 			// the bazel remote is using actually uses a csv (!?) parser
 			// to parse htaccess (!?) and it chokes on any use of a colon
 			// otherwise.
-			([username, password]) =>
-				`"${username.result}":"${password.bcryptHash}"\n`
+			([username, password]) => {
+				const val = `${username.result}:${password.bcryptHash}\n`;
+
+				console.log(`Going up with auth: ${val}`);
+
+				return val;
+			}
 		);
 
 		/**
