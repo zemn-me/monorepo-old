@@ -198,12 +198,6 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		 */
 		const htpasswdFileContent = Pulumi.interpolate`${username.result}:${password.bcryptHash}\n`;
 
-		htpasswdFileContent.apply(fileContent => {
-			console.log(
-				`fileContent, type: ${typeof fileContent}; ${fileContent}`
-			);
-		});
-
 		/**
 		 * Temporary directory to contain assets needed for the Docker container.
 		 */
@@ -452,7 +446,7 @@ export class Tests extends Pulumi.ComponentResource {
 					child_process.execFile
 				)(
 					'bazel',
-					['test', '//testing/...', `--remote_cache=${endpoint}`],
+					['test', `--remote_cache=${endpoint}`, '//testing/...'],
 					{
 						cwd: bazel.workspaceDirectory(),
 					}
