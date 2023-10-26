@@ -197,8 +197,12 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		 * Content for the htpasswd file (auth for the cache server)
 		 */
 		const htpasswdFileContent = Pulumi.all([username, password]).apply(
+			// what i'm doing here may look weird but the library that
+			// the bazel remote is using actually uses a csv (!?) parser
+			// to parse htaccess (!?) and it chokes on any use of a colon
+			// otherwise.
 			([username, password]) =>
-				`${username.result}:${password.bcryptHash}`
+				`"${username.result}":"${password.bcryptHash}"\n`
 		);
 
 		/**
