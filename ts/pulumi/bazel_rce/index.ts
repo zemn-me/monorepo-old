@@ -196,27 +196,13 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		/**
 		 * Content for the htpasswd file (auth for the cache server)
 		 */
-		const htpasswdFileContent = Pulumi.interpolate`${username.result}:${password.result}`;
+		const htpasswdFileContent = Pulumi.interpolate`${username.result}:${password.bcryptHash}\n`;
 
 		htpasswdFileContent.apply(fileContent => {
 			console.log(
 				`fileContent, type: ${typeof fileContent}; ${fileContent}`
 			);
 		});
-
-		Pulumi.all([username, password]).apply(
-			// what i'm doing here may look weird but the library that
-			// the bazel remote is using actually uses a csv (!?) parser
-			// to parse htaccess (!?) and it chokes on any use of a colon
-			// otherwise.
-			([username, password]) => {
-				const val = `${username.result}:${password.bcryptHash}\n`;
-
-				console.log(`Going up with auth: ${val}`);
-
-				return val;
-			}
-		);
 
 		/**
 		 * Temporary directory to contain assets needed for the Docker container.
