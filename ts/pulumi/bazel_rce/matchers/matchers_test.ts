@@ -9,7 +9,7 @@ com.google.devtools.build.lib.remote.http.HttpException: 401 Unauthorized
 `;
 
 const remote_cache_success_corpus = `
-INFO: 11 processes: 6 remote cache hit, 3 internal, 2 remote.
+remote-cache
 `;
 
 const non_zero_upload_timed_out = `
@@ -25,9 +25,9 @@ waawwdawawd
 `;
 
 test('matchers', () => {
-	expect(
-		matchers.containsRemoteCacheSuccess(remote_cache_success_corpus)
-	).toBe(true);
+	expect(matchers.containsRemoteCacheUsage(remote_cache_success_corpus)).toBe(
+		true
+	);
 	expect(
 		matchers.containsRemoteCacheWarning(remote_cache_warning_corpus)
 	).toBe(true);

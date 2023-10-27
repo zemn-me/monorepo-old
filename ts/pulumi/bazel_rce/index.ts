@@ -19,7 +19,7 @@ import * as Cert from 'ts/pulumi/lib/certificate';
 
 import {
 	containsNonZeroUploadTimedOut,
-	containsRemoteCacheSuccess,
+	containsRemoteCacheUsage,
 	containsRemoteCacheWarning,
 } from './matchers/matchers';
 
@@ -488,7 +488,7 @@ export class Tests extends Pulumi.ComponentResource {
 				// INFO: 11 processes: 6 remote cache hit, 3 internal, 2 remote.
 				if (
 					![stdout, stderr].some(fileDescriptor =>
-						containsRemoteCacheSuccess(fileDescriptor)
+						containsRemoteCacheUsage(fileDescriptor)
 					)
 				)
 					throw new Error(
