@@ -17,6 +17,12 @@ import * as bazel from 'ts/bazel';
 import { Command } from 'ts/github/actions';
 import * as Cert from 'ts/pulumi/lib/certificate';
 
+import {
+	containsNonZeroUploadTimedOut,
+	containsRemoteCacheUsage,
+	containsRemoteCacheWarning,
+} from './matchers/matchers';
+
 export interface Args {
 	/**
 	 * The zone to deploy to
@@ -27,6 +33,7 @@ export interface Args {
 
 	/**
 	 * Adds the prefix STAGING_ to the secret name.
+	 *
 	 */
 	stage: boolean;
 
@@ -126,7 +133,16 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		 */
 		const bucket = new aws.s3.BucketV2(
 			deriveAWSRestrictedBucketName(name),
-			{},
+			{
+				// during our testing, we will potentially add some
+				// content to the bucket that will prevent deletion
+				//
+				// I think in future it might be best to change this
+				// so we delete the stuff we add in Test (at the bottom
+				// of this file). But that I think will require using the
+				// AWS API directly, so this is simpler.
+				forceDestroy: args.stage,
+			},
 			{
 				parent: this,
 			}
@@ -191,10 +207,7 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		/**
 		 * Content for the htpasswd file (auth for the cache server)
 		 */
-		const htpasswdFileContent = Pulumi.all([username, password]).apply(
-			([username, password]) =>
-				`${username.result}:${password.bcryptHash}`
-		);
+		const htpasswdFileContent = Pulumi.interpolate`${username.result}:${password.bcryptHash}\n`;
 
 		/**
 		 * Temporary directory to contain assets needed for the Docker container.
@@ -440,13 +453,47 @@ export class Tests extends Pulumi.ComponentResource {
 		]).apply(async ([endpoint, serviceName]) => {
 			// build something simple with bazel
 			try {
-				await util.promisify(child_process.execFile)(
+				const { stdout, stderr } = await util.promisify(
+					child_process.execFile
+				)(
 					'bazel',
-					['test', '//testing/...', `--remote_cache=${endpoint}`],
+					['test', `--remote_cache=${endpoint}`, '//testing/...'],
 					{
 						cwd: bazel.workspaceDirectory(),
 					}
 				);
+
+				/*
+					 WARNING: Remote Cache: 21 errors during bulk transfer:
+					com.google.devtools.build.lib.remote.http.HttpException: 401 Unauthorized
+					401 Unauthorized
+					com.google.devtools.build.lib.remote.http.HttpException: 401 Unauthorized
+					401 Unauthorized
+				*/
+
+				// a remote cache warning must be promoted to an error
+				if (
+					[stdout, stderr].some(fileDescriptor =>
+						containsRemoteCacheWarning(fileDescriptor)
+					) &&
+					// make an exception if a partial upload happened
+					![stdout, stderr].some(fileDescriptor =>
+						containsNonZeroUploadTimedOut(fileDescriptor)
+					)
+				)
+					throw new Error(`bazel remote cache error: ${stderr}`);
+
+				// we must see that the remote has been used
+				// https://bazel.build/remote/cache-remote
+				// INFO: 11 processes: 6 remote cache hit, 3 internal, 2 remote.
+				if (
+					![stdout, stderr].some(fileDescriptor =>
+						containsRemoteCacheUsage(fileDescriptor)
+					)
+				)
+					throw new Error(
+						`bazel remote cache server was not used in testing: ${stderr}`
+					);
 				return [];
 			} catch (e) {
 				return [

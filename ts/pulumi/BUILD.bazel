@@ -24,6 +24,7 @@ ts_project(
         "//ts/pulumi/pleaseintroducemetoyour.dog:ts",
         "//ts/pulumi/lib",
 		"//ts/bazel",
+		"//ts/pulumi/bazel_rce/matchers",
 		"//ts/github/actions",
 		# peer dep of aws sdk, transident dep of @pulumi/aws.
 		"//:node_modules/@aws-sdk/region-config-resolver"
