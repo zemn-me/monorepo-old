@@ -2,7 +2,9 @@ import * as pulumi from '@pulumi/pulumi';
 
 pulumi.runtime.setMocks({
 	// Mock requests to provision cloud resources and return a canned response.
-	newResource: (args: pulumi.runtime.MockResourceArgs) =>
+	newResource: (
+		args: pulumi.runtime.MockResourceArgs
+	): { id: string; state: { inputs: unknown } } =>
 		// Here, we're returning a same-shaped object for all resource types.
 		// We could, however, use the arguments passed into this function to
 		// customize the mocked-out properties of a particular resource based
