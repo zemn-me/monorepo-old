@@ -13,11 +13,15 @@ INFO: 11 processes: 6 remote cache hit, 3 internal, 2 remote.
 `;
 
 const non_zero_upload_timed_out = `
-com.google.devtools.build.lib.remote.http.UploadTimeoutException: Upload of '/cas/ba80c8c047b9de7065f1606b29f673bde54332256b7ff58226367bff21b06b9c' timed out. Sent 3271010 bytes.
+something
+  com.google.devtools.build.lib.remote.http.UploadTimeoutException: Upload of '/cas/ba80c8c047b9de7065f1606b29f673bde54332256b7ff58226367bff21b06b9c' timed out. Sent 3271010 bytes.
+something
 `;
 
-const non_zero_upload_timed_out_incorrect = `
+const zero_upload_timed_out = `
+wawdawdawd
 com.google.devtools.build.lib.remote.http.UploadTimeoutException: Upload of '/cas/ba80c8c047b9de7065f1606b29f673bde54332256b7ff58226367bff21b06b9c' timed out. Sent 0 bytes.
+waawwdawawd
 `;
 
 test('matchers', () => {
@@ -30,9 +34,7 @@ test('matchers', () => {
 	expect(
 		matchers.containsNonZeroUploadTimedOut(non_zero_upload_timed_out)
 	).toBe(true);
-	expect(
-		matchers.containsNonZeroUploadTimedOut(
-			non_zero_upload_timed_out_incorrect
-		)
-	).toBe(false);
+	expect(matchers.containsNonZeroUploadTimedOut(zero_upload_timed_out)).toBe(
+		false
+	);
 });

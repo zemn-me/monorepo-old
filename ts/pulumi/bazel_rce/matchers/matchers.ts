@@ -12,12 +12,12 @@ export function containsRemoteCacheSuccess(s: string): boolean {
  */
 export function containsNonZeroUploadTimedOut(s: string): boolean {
 	const match =
-		/com\.google\.devtools\.build\.lib\.remote\.http\.UploadTimeoutException: .*timed out. Sent (\d+) bytes/gm.exec(
+		/com\.google\.devtools\.build\.lib\.remote\.http\.UploadTimeoutException: .*timed out\. Sent (\d+) bytes/g.exec(
 			s
 		);
 	if (match === null) return false;
 
-	if (+match[0] > 0) return true;
+	if (+match[1] > 0) return true;
 
 	return false;
 }
