@@ -33,6 +33,7 @@ export interface Args {
 
 	/**
 	 * Adds the prefix STAGING_ to the secret name.
+	 *
 	 */
 	stage: boolean;
 
@@ -132,7 +133,16 @@ export class BazelRemoteCache extends Pulumi.ComponentResource {
 		 */
 		const bucket = new aws.s3.BucketV2(
 			deriveAWSRestrictedBucketName(name),
-			{},
+			{
+				// during our testing, we will potentially add some
+				// content to the bucket that will prevent deletion
+				//
+				// I think in future it might be best to change this
+				// so we delete the stuff we add in Test (at the bottom
+				// of this file). But that I think will require using the
+				// AWS API directly, so this is simpler.
+				forceDestroy: args.stage,
+			},
 			{
 				parent: this,
 			}
