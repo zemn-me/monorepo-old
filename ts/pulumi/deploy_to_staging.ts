@@ -30,7 +30,7 @@ const waitForLockTask =
 
 async function waitForLock<T>(
 	f: () => Promise<T>,
-	cause: string
+	cause?: string
 ): Promise<T | Error> {
 	const results: (T | Error)[] = [];
 	let lastResult: T | Error;
@@ -39,7 +39,7 @@ async function waitForLock<T>(
 	const step = 2 * minute;
 
 	do {
-		lastResult = await attempt(f, cause);
+		lastResult = await attempt(f);
 		results.push(lastResult);
 	} while (
 		lastResult instanceof Error &&
@@ -81,7 +81,7 @@ async function waitForLock<T>(
 
 async function attempt<T>(
 	f: () => Promise<T>,
-	cause: string
+	cause?: string
 ): Promise<T | Error> {
 	let ret: T | Error;
 	try {
@@ -89,7 +89,7 @@ async function attempt<T>(
 	} catch (e) {
 		const base = e instanceof Error ? e : new Error(`${e}`);
 
-		ret = new Error(`${cause} failed due to ${base}`);
+		ret = new Error(`${cause} failed`);
 		ret.cause = base;
 	}
 
@@ -98,8 +98,7 @@ async function attempt<T>(
 
 class MultiError extends Error {
 	constructor(public readonly errors: Error[]) {
-		super(`${errors.length} errors: ` + errors.map(e => `${e}`).join('; '));
-		super.name = 'MultiError';
+		super(errors.map(e => `${e}`).join('; '));
 	}
 }
 
