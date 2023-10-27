@@ -39,7 +39,11 @@ async function waitForLock<T>(
 	const step = 2 * minute;
 
 	do {
-		lastResult = await attempt(f, cause);
+		try {
+			lastResult = await attempt(f, cause);
+		} catch (e) {
+			lastResult = e instanceof Error ? e : new Error(`Error: ${e}`);
+		}
 		results.push(lastResult);
 	} while (
 		lastResult instanceof Error &&
