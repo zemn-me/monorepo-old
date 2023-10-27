@@ -20,3 +20,5 @@ This will recursively run all tests in parallel.
 2. **Linting**. There are central rules that enforce basic linting standards.
 3. **Continuous deployment**. Every day, this repo runs a deploy script which detects any changes in any files and re-deploys or publishes any changed packages or services.
 4. **Automatic versioning**. The packages published on NPM use the venerable api-extractor to detect major or minor version changes to the API, and automatically increment version numbers as relevant.
+
+This is a test that remote caching works!
