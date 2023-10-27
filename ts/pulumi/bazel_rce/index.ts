@@ -18,6 +18,7 @@ import { Command } from 'ts/github/actions';
 import * as Cert from 'ts/pulumi/lib/certificate';
 
 import {
+	containsNonZeroUploadTimedOut,
 	containsRemoteCacheSuccess,
 	containsRemoteCacheWarning,
 } from './matchers/matchers';
@@ -464,6 +465,10 @@ export class Tests extends Pulumi.ComponentResource {
 				if (
 					[stdout, stderr].some(fileDescriptor =>
 						containsRemoteCacheWarning(fileDescriptor)
+					) &&
+					// make an exception if a partial upload happened
+					![stdout, stderr].some(fileDescriptor =>
+						containsNonZeroUploadTimedOut(fileDescriptor)
 					)
 				)
 					throw new Error(`bazel remote cache error: ${stderr}`);
